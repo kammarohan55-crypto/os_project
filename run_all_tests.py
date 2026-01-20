@@ -10,7 +10,7 @@ import os
 import time
 from pathlib import Path
 
-PROJECT_ROOT = "/mnt/c/Users/Rohan/Desktop/os_el/sandbox-project"
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 os.chdir(PROJECT_ROOT)
 
 print("=" * 60)

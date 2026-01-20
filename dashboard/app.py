@@ -12,7 +12,12 @@ app = Flask(__name__)
 classifier = RiskClassifier()
 cached_features = None
 last_log_count = 0
-analytics_service = AnalyticsService("../logs")
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGS_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "logs"))
+
+analytics_service = AnalyticsService(LOGS_DIR)
 risk_scoring_service = RiskScoringService()  # Phase 5: Risk scoring
 
 def get_feature_dataframe():
@@ -24,7 +29,7 @@ def get_feature_dataframe():
     global cached_features, last_log_count
     
     try:
-        logs = load_all_logs("../logs")
+        logs = load_all_logs(LOGS_DIR)
         
         # Cache invalidation
         if len(logs) != last_log_count:
@@ -55,7 +60,7 @@ def stats():
     """
     try:
         # Get original logs for timeline data
-        original_logs = load_all_logs("../logs")
+        original_logs = load_all_logs(LOGS_DIR)
         df = get_feature_dataframe()
         
         if df.empty:
