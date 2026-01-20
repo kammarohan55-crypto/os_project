@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Sandbox Analytics & Intelligence</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 0.95rem;
+            opacity: 0.95;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            background: white;
+            padding: 0 2rem;
+            border-bottom: 1px solid #e0e0e0;
+            margin: 0;
+        }
+
+        .nav-tabs button {
+            background: none;
+            border: none;
+            padding: 1rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .nav-tabs button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .nav-tabs button:hover {
+            color: #667eea;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .card h3 {
+            font-size: 1rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: #555;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 0.5rem;
+        }
+
+        .execution-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .execution-item {
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            padding: 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .execution-item:hover {
+            background: #f0f0f0;
+            transform: translateX(4px);
+        }
+
+        .execution-item.selected {
+            background: #e8eaf6;
+            border-left-color: #764ba2;
+        }
+
+        .execution-item .pid {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 0.9rem;
+        }
+
+        .execution-item .program {
+            font-size: 0.95rem;
+            margin: 0.25rem 0;
+        }
+
+        .execution-item .profile {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin: 0.25rem 0;
+        }
+
+        .risk-badge.high {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .risk-badge.medium {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .risk-badge.low {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .analysis-result {
+            background: #f9f9f9;
+            padding: 1.5rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+
+        .behavior-item {
+            background: white;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 3px solid #667eea;
+            border-radius: 4px;
+        }
+
+        .behavior-item .behavior-name {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .behavior-item .behavior-explanation {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #555;
+        }
+
+        .behavior-item .behavior-metrics {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: #f5f5f5;
+            border-radius: 3px;
+            font-size: 0.85rem;
+            font-family: monospace;
+            color: #666;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 1rem 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .controls button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .controls button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .controls button.secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .controls button.secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .metric-select {
+            padding: 0.6rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .stat-box {
+            background: #f0f7ff;
+            padding: 1rem;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+
+        .stat-box .label {
+            font-size: 0.85rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-box .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-top: 0.5rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #999;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        .footnote {
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div style="float: right; font-size: 0.9rem;">
+            <a href="/" style="color: rgba(255,255,255,0.8); text-decoration: none; margin-right: 15px;">Dashboard</a>
+            <a href="/evaluation"
+                style="color: white; text-decoration: none; font-weight: bold; border-bottom: 2px solid rgba(255,255,255,0.5);">Phase
+                6: Evaluation</a>
+        </div>
+        <h1>📊 Sandbox Analytics & Intelligence</h1>
+        <p>Deterministic behavioral analysis of persisted telemetry data from sandbox executions.</p>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="tab-button active" data-tab="individual">Individual Execution</button>
+        <button class="tab-button" data-tab="comparison">Compare Executions</button>
+        <button class="tab-button" data-tab="timeline">Timeline Analysis</button>
+        <button class="tab-button" data-tab="statistics">Profile Statistics</button>
+    </div>
+
+    <div class="container">
+
+        <!-- Individual Execution Analysis -->
+        <div id="individual" class="tab-content active">
+            <div class="card">
+                <h2>Individual Execution Analysis</h2>
+                <p>Select an execution to view detailed behavioral analysis.</p>
+
+                <div id="execution-list" class="execution-list">
+                    <div class="loading">Loading executions...</div>
+                </div>
+
+                <div id="analysis-container" style="display: none;">
+                    <div id="analysis-result" class="analysis-result"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Compare Executions -->
+        <div id="comparison" class="tab-content">
+            <div class="card">
+                <h2>Compare Multiple Executions</h2>
+                <p>Select 2+ executions to see side-by-side comparison and common patterns.</p>
+
+                <div id="comparison-list" class="execution-list">
+                    <div class="loading">Loading executions...</div>
+                </div>
+
+                <div class="controls">
+                    <button onclick="analyzeComparison()">Analyze Selected</button>
+                    <button class="secondary" onclick="clearSelection()">Clear Selection</button>
+                </div>
+
+                <div id="comparison-result" style="display: none;">
+                    <div id="comparison-analysis"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline Analysis -->
+        <div id="timeline" class="tab-content">
+            <div class="card">
+                <h2>Timeline Comparison</h2>
+                <p>Compare metrics over time across multiple executions.</p>
+
+                <div class="controls">
+                    <div id="timeline-list" class="execution-list">
+                        <div class="loading">Loading executions...</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <select class="metric-select" id="metric-select">
+                        <option value="cpu_percent">CPU Usage (%)</option>
+                        <option value="memory_kb">Memory (KB)</option>
+                    </select>
+                    <button onclick="generateTimelineComparison()">Generate Comparison</button>
+                </div>
+
+                <div id="timeline-result" style="display: none;">
+                    <div class="chart-container">
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Statistics -->
+        <div id="statistics" class="tab-content">
+            <div class="card">
+                <h2>Statistics by Profile</h2>
+                <p>Aggregate statistics across all executions grouped by sandbox profile.</p>
+
+                <div id="stats-container">
+                    <div class="loading">Loading statistics...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let allExecutions = [];
+        let selectedExecutions = new Set();
+        let timelineChart = null;
+
+        // Tab switching
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                btn.classList.add('active');
+                const tabId = btn.dataset.tab;
+                document.getElementById(tabId).classList.add('active');
+
+                // Load data when tab is opened
+                if (tabId === 'statistics' && !statsLoaded) {
+                    loadStatistics();
+                }
+            });
+        });
+
+        // Load executions on page load
+        async function loadExecutions() {
+            try {
+                const response = await fetch('/api/analytics/executions');
+                const data = await response.json();
+                allExecutions = data.executions || [];
+
+                populateExecutionList();
+                populateTimelineList();
+            } catch (e) {
+                console.error('Error loading executions:', e);
+                document.getElementById('execution-list').innerHTML = '<div class="error">Failed to load executions</div>';
+            }
+        }
+
+        function populateExecutionList() {
+            const html = allExecutions.map(exec => `
+                <div class="execution-item" onclick="selectExecution(${exec.pid})">
+                    <div class="pid">PID: ${exec.pid}</div>
+                    <div class="program">${exec.program}</div>
+                    <div><span class="profile">${exec.profile}</span></div>
+                    <div><span class="risk-badge ${exec.risk_level.toLowerCase()}">${exec.risk_level}</span></div>
+                </div>
+            `).join('');
+
+            document.getElementById('execution-list').innerHTML = html;
+
+            // Also populate comparison list
+            document.getElementById('comparison-list').innerHTML = html.replace(
+                /onclick="selectExecution/g,
+                'id="comp-exec-' + '${exec.pid}' + '" onclick="toggleSelection'
+            );
+
+            // Fix the comparison list (regenerate properly)
+            const compList = document.getElementById('comparison-list');
+            compList.innerHTML = allExecutions.map(exec => `
+                <div class="execution-item" id="comp-exec-${exec.pid}" onclick="toggleSelection(${exec.pid})">
+                    <div class="pid">PID: ${exec.pid}</div>
+                    <div class="program">${exec.program}</div>
+                    <div><span class="profile">${exec.profile}</span></div>
+                    <div><span class="risk-badge ${exec.risk_level.toLowerCase()}">${exec.risk_level}</span></div>
+                </div>
+            `).join('');
+        }
+
+        function populateTimelineList() {
+            const html = allExecutions.map(exec => `
+                <div class="execution-item" onclick="toggleTimelineSelection(${exec.pid})">
+                    <div class="pid">PID: ${exec.pid}</div>
+                    <div class="program">${exec.program}</div>
+                    <div><span class="profile">${exec.profile}</span></div>
+                </div>
+            `).join('');
+
+            document.getElementById('timeline-list').innerHTML = html;
+        }
+
+        async function selectExecution(pid) {
+            try {
+                const response = await fetch(`/api/analytics/execution/${pid}`);
+                const analysis = await response.json();
+                displayAnalysis(analysis);
+            } catch (e) {
+                console.error('Error loading analysis:', e);
+            }
+        }
+
+        function toggleSelection(pid) {
+            const elem = document.getElementById(`comp-exec-${pid}`);
+            if (selectedExecutions.has(pid)) {
+                selectedExecutions.delete(pid);
+                elem.classList.remove('selected');
+            } else {
+                selectedExecutions.add(pid);
+                elem.classList.add('selected');
+            }
+        }
+
+        async function analyzeComparison() {
+            if (selectedExecutions.size < 2) {
+                alert('Please select at least 2 executions');
+                return;
+            }
+
+            try {
+                const pids = Array.from(selectedExecutions);
+                const response = await fetch(`/api/analytics/compare?pids=${pids.join(',')}`);
+                const result = await response.json();
+                displayComparisonResult(result);
+            } catch (e) {
+                console.error('Error comparing:', e);
+            }
+        }
+
+        function clearSelection() {
+            selectedExecutions.clear();
+            document.querySelectorAll('#comparison-list .execution-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            document.getElementById('comparison-result').style.display = 'none';
+        }
+
+        let timelineSelections = new Set();
+
+        function toggleTimelineSelection(pid) {
+            const elem = document.querySelector(`#timeline-list [onclick*="${pid}"]`);
+            if (timelineSelections.has(pid)) {
+                timelineSelections.delete(pid);
+                elem.classList.remove('selected');
+            } else {
+                timelineSelections.add(pid);
+                elem.classList.add('selected');
+            }
+        }
+
+        async function generateTimelineComparison() {
+            if (timelineSelections.size === 0) {
+                alert('Please select at least 1 execution');
+                return;
+            }
+
+            try {
+                const pids = Array.from(timelineSelections);
+                const metric = document.getElementById('metric-select').value;
+                const response = await fetch(`/api/analytics/timeline?pids=${pids.join(',')}&metric=${metric}`);
+                const result = await response.json();
+                displayTimelineChart(result);
+            } catch (e) {
+                console.error('Error generating timeline:', e);
+            }
+        }
+
+        function displayAnalysis(analysis) {
+            if (analysis.error) {
+                document.getElementById('analysis-container').style.display = 'none';
+                return;
+            }
+
+            let html = `
+                <h3>Program: ${analysis.program} (PID: ${analysis.pid})</h3>
+                <p><strong>Profile:</strong> ${analysis.profile} | <strong>Risk Level:</strong> <span class="risk-badge ${analysis.risk_level.toLowerCase()}">${analysis.risk_level}</span></p>
+                
+                ${analysis.detected_behaviors.length > 0 ? `
+                    <h3>Detected Behaviors</h3>
+                    ${analysis.detected_behaviors.map(behavior => `
+                        <div class="behavior-item">
+                            <div class="behavior-name">🔍 ${behavior}</div>
+                            <div class="behavior-explanation">${analysis.explanations[behavior] || 'No explanation'}</div>
+                            ${analysis.metrics[behavior.toLowerCase().replace(/_/g, '-')] ? `
+                                <div class="behavior-metrics">${JSON.stringify(analysis.metrics[behavior.toLowerCase().replace(/_/g, '-')], null, 2)}</div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                ` : `
+                    <div class="success">✓ No anomalous behaviors detected. Execution appears normal.</div>
+                `}
+            `;
+
+            document.getElementById('analysis-result').innerHTML = html;
+            document.getElementById('analysis-container').style.display = 'block';
+        }
+
+        function displayComparisonResult(result) {
+            if (result.error) {
+                document.getElementById('comparison-result').innerHTML = `<div class="error">${result.error}</div>`;
+            } else {
+                let html = `
+                    <h3>Comparison Summary</h3>
+                    <p>${result.comparison.summary}</p>
+                    
+                    <h3>Detailed Analyses</h3>
+                    ${result.executions.map(exec => `
+                        <div style="background: #f9f9f9; padding: 1rem; margin: 0.5rem 0; border-radius: 4px;">
+                            <strong>PID ${exec.pid}</strong> (${exec.program}, Risk: ${exec.risk_level})
+                            <br><small>${exec.detected_behaviors.length > 0 ? 'Behaviors: ' + exec.detected_behaviors.join(', ') : 'No behaviors detected'}</small>
+                        </div>
+                    `).join('')}
+                `;
+
+                document.getElementById('comparison-analysis').innerHTML = html;
+            }
+
+            document.getElementById('comparison-result').style.display = 'block';
+        }
+
+        function displayTimelineChart(result) {
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+
+            if (timelineChart) {
+                timelineChart.destroy();
+            }
+
+            const datasets = result.timelines.map((timeline, idx) => ({
+                label: `${timeline.program} (${timeline.profile})`,
+                data: timeline.values,
+                borderColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe'][idx % 4],
+                backgroundColor: `rgba(102, 126, 234, ${0.1 + idx * 0.1})`,
+                tension: 0.4,
+                fill: false
+            }));
+
+            timelineChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: result.timelines[0].time_ms || [],
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `${result.metric.replace(/_/g, ' ').toUpperCase()} Over Time`
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (ms)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: result.metric.replace(/_/g, ' ')
+                            }
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('timeline-result').style.display = 'block';
+        }
+
+        let statsLoaded = false;
+
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/api/analytics/stats-by-profile');
+                const stats = await response.json();
+
+                let html = '';
+
+                for (const [profile, data] of Object.entries(stats)) {
+                    html += `
+                        <h3>${profile} Profile</h3>
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="label">Executions</div>
+                                <div class="value">${data.count}</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="label">Avg Peak CPU</div>
+                                <div class="value">${data.avg_peak_cpu}%</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="label">Max Peak CPU</div>
+                                <div class="value">${data.max_peak_cpu}%</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="label">Avg Peak Memory</div>
+                                <div class="value">${Math.round(data.avg_peak_memory / 1024)} MB</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="label">Max Peak Memory</div>
+                                <div class="value">${Math.round(data.max_peak_memory / 1024)} MB</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="label">Total Blocked Syscalls</div>
+                                <div class="value">${data.total_blocked_syscalls}</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #666; margin: 1rem 0;">
+                            Exit Reasons: ${Object.entries(data.exit_reasons).map(([reason, count]) => `${reason} (${count})`).join(', ')}
+                        </div>
+                    `;
+                }
+
+                document.getElementById('stats-container').innerHTML = html;
+                statsLoaded = true;
+            } catch (e) {
+                console.error('Error loading statistics:', e);
+                document.getElementById('stats-container').innerHTML = '<div class="error">Failed to load statistics</div>';
+            }
+        }
+
+        // Initialize
+        loadExecutions();
+    </script>
+</body>
+
+</html>

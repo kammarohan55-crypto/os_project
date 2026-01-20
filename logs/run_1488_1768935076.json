@@ -1,0 +1,23 @@
+{
+  "pid": 1488,
+  "program": "./test_programs/cpu_stress",
+  "profile": "LEARNING",
+  "timeline": {
+    "time_ms": [1,101,202,302,402,503,603,703,804,904,1005,1106,1206,1306,1407,1507,1607,1708,1808,1909,2009,2109],
+    "cpu_percent": [0,80,98,100,98,100,101,101,98,100,98,98,100,100,100,100,100,108,101,98,100,100],
+    "memory_kb": [3840,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612]
+  },
+  "summary": {
+    "runtime_ms": 2210,
+    "peak_cpu": 108,
+    "peak_memory_kb": 3840,
+    "page_faults_minor": 110,
+    "page_faults_major": 2,
+    "read_syscalls": 9,
+    "write_syscalls": 7,
+    "blocked_syscalls": 0,
+    "termination": "SIG64",
+    "blocked_syscall": "",
+    "exit_reason": "SIGNALED"
+  }
+}
