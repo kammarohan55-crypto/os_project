@@ -75,16 +75,134 @@ def stats():
         # Create a mapping of PID to original log (for timeline data)
         log_map = {log.get('pid'): log for log in original_logs}
         
-        # Enrich with ML predictions AND timeline
         enriched_runs = []
         for idx, row in df.head(50).iterrows():
             try:
+                # Enrich with ML predictions AND Heuristic Risk
                 ml_result = classifier.predict(row.to_dict())
                 run_data = row.to_dict()
-                run_data.update(ml_result)
+                run_data.update(ml_result) # Adds 'prediction' and 'confidence'
                 
-                # Add timeline from original log
+                # HEURISTIC ANALYZER (Deterministically overrides ML for enforcement)
+                # We need the full log to analyze properly
                 pid = row.get('pid', 0)
+                if pid in log_map:
+                    log = log_map[pid]
+                    analysis = analytics_service.analyzer.analyze_execution(log)
+                    
+                    # Logic 1: Heuristic Risk is the final authority
+                    run_data['heuristic_risk'] = analysis.get('risk_level', 'UNKNOWN')
+                    run_data['detected_behaviors'] = analysis.get('detected_behaviors', [])
+                    
+                    # Logic 2: Short-lived execution check (< 2 samples)
+                    # We need to know if timeline exists and has samples
+                    timeline = log.get('timeline', {})
+                    time_samples = timeline.get('time_ms', [])
+                    sample_count = len(time_samples)
+                    
+                    mem_metrics = analysis.get('metrics', {}).get('memory', {})
+                    mem_growth = mem_metrics.get('memory_growth_kb', 0)
+                    
+                    peak_memory = log.get('summary', {}).get('peak_memory_kb', 0)
+                    
+                    behaviors = analysis.get('detected_behaviors', [])
+
+                    if sample_count < 2:
+                        exit_reason = log.get('summary', {}).get('exit_reason', 'UNKNOWN')
+                        
+                        # Rule 2b: If exited nicely, it's just a short utility.
+                        if "EXITED(0)" in exit_reason:
+                            run_data['final_risk'] = 'INFO'
+                            run_data['heuristic_risk'] = 'SHORT_LIVED'
+                            run_data['prediction'] = 'Ignored' 
+                            run_data['confidence'] = 0
+                            run_data['risk_reason'] = "Short-lived Utility (Benign)"
+                            mem_growth = 0
+                        else:
+                            # Dangerous short-lived
+                            risk_val = analysis.get('risk_level', 'UNKNOWN')
+                            if risk_val == 'UNKNOWN':
+                                risk_val = 'HIGH' if "VIOLATION" in exit_reason else 'MEDIUM'
+                            
+                            run_data['final_risk'] = risk_val
+                            run_data['risk_reason'] = f"Short-lived but dangerous: {exit_reason}"
+                            mem_growth = 0 
+                    else:
+                        # Normal Execution (> 2 samples)
+                        risk_val = analysis.get('risk_level', 'UNKNOWN')
+                        
+                        # Explicitly map behaviors to dashboard risks with HIGH confidence
+                        if 'MONOTONIC_MEMORY_GROWTH' in behaviors:
+                            run_data['final_risk'] = 'HIGH'
+                            run_data['heuristic_risk'] = 'MEMORY_LEAK'
+                            run_data['prediction'] = 'Resource-Anomalous'
+                            run_data['confidence'] = 98
+                            run_data['risk_reason'] = "Heuristic: Severe Memory Leak Detected"
+
+                        elif 'SUSTAINED_HIGH_CPU' in behaviors:
+                            run_data['final_risk'] = 'MEDIUM'
+                            run_data['heuristic_risk'] = 'CPU_HOG'
+                            run_data['prediction'] = 'Resource-Anomalous'
+                            run_data['confidence'] = 95
+                            run_data['risk_reason'] = "Heuristic: Sustained High CPU Usage"
+                        
+                        elif 'POLICY_VIOLATION' in behaviors:
+                             run_data['final_risk'] = 'HIGH'
+                             run_data['heuristic_risk'] = 'SECURITY_VIOLATION'
+                             run_data['prediction'] = 'Malicious'
+                             run_data['risk_reason'] = "Heuristic: Policy Violation Trap"
+
+                        # Fallback: Check risk_val directly if behaviors list missed it
+                        elif risk_val == 'CPU_HOG':
+                             run_data['final_risk'] = 'MEDIUM'
+                             run_data['prediction'] = 'Resource-Anomalous'
+                             run_data['confidence'] = 95
+                             run_data['risk_reason'] = "Heuristic: CPU Usage Anomaly"
+                             
+                        elif risk_val == 'MEMORY_LEAK':
+                             run_data['final_risk'] = 'HIGH'
+                             run_data['prediction'] = 'Resource-Anomalous'
+                             run_data['confidence'] = 98
+                             run_data['risk_reason'] = "Heuristic: Memory Leak Anomaly"
+
+                        elif risk_val == 'UNKNOWN':
+                            # No anomalies detected. Check exit status.
+                            exit_reason = log.get('summary', {}).get('exit_reason', 'UNKNOWN')
+                            if "EXITED(0)" in exit_reason:
+                                run_data['final_risk'] = 'LOW'
+                                run_data['heuristic_risk'] = 'NORMAL'
+                                run_data['prediction'] = 'Benign'
+                                run_data['confidence'] = 100
+                                run_data['risk_reason'] = "Normal Behavior (No Anomalies)"
+                            else:
+                                # Crashed/Killed but no specific anomaly detected
+                                run_data['final_risk'] = 'MEDIUM'
+                                run_data['risk_reason'] = f"Abnormal Exit: {exit_reason}"
+                        else:
+                             run_data['final_risk'] = risk_val
+
+                    
+                    # SPECIAL OVERRIDE: Whitelist /bin/echo (User Request)
+                    if '/bin/echo' in str(log.get('program', '')):
+                         run_data['final_risk'] = 'LOW'
+                         run_data['heuristic_risk'] = 'OK'
+                         run_data['prediction'] = 'Benign'
+                         run_data['confidence'] = 99
+                         run_data['risk_reason'] = "Whitelisted Utility (Known Safe)"
+
+                    # Explicitly populate metrics expected by frontend
+                    run_data['memory_growth_kb'] = mem_growth
+                    run_data['memory_samples'] = sample_count
+                    run_data['peak_memory_kb'] = peak_memory
+                        
+                else:
+                    # Fallback if no log found
+                    run_data['final_risk'] = 'UNKNOWN'
+                    run_data['heuristic_risk'] = 'UNKNOWN'
+                    run_data['memory_growth_kb'] = 0
+                    run_data['memory_samples'] = 0
+                        
+                # Add timeline data
                 if pid in log_map:
                     run_data['timeline'] = log_map[pid].get('timeline', {})
                 else:
@@ -92,9 +210,10 @@ def stats():
                 
                 enriched_runs.append(run_data)
             except Exception as e:
-                print(f"[WARNING] ML prediction failed for row {idx}: {e}")
-                # Still include the row without ML
+                print(f"[WARNING] Processing failed for row {idx}: {e}")
+                # Still include the row without ML/Risk
                 run_data = row.to_dict()
+                run_data['final_risk'] = 'UNKNOWN'
                 run_data['timeline'] = {'time_ms': [], 'cpu_percent': [], 'memory_kb': []}
                 enriched_runs.append(run_data)
         
@@ -200,6 +319,24 @@ def get_all_executions():
             analysis = analytics_service.get_execution_analysis(pid)
             risk_score = risk_scoring_service.score_execution(analysis)
             
+            # MANDATORY: Derive sample count directly from timeline
+            timeline = log.get('timeline', {})
+            # We strictly count time points to know valid samples
+            time_samples = timeline.get('time_ms', [])
+            sample_count = len(time_samples)
+            
+            # Safe extraction of memory metrics (relies on analytics_engine to calculate growth)
+            mem_metrics = analysis.get('metrics', {}).get('memory', {})
+            mem_growth = mem_metrics.get('memory_growth_kb', 0)
+            
+            # Logic 3: Enforcement Overrides based on sample count
+            final_risk = analysis.get('risk_level', 'UNKNOWN')
+            
+            if sample_count < 2:
+                final_risk = "SHORT_LIVED_UTILITY"
+                # Override memory metrics for consistency
+                mem_growth = 0 
+                
             executions.append({
                 'pid': pid,
                 'program': log.get('program', 'unknown'),
@@ -207,9 +344,11 @@ def get_all_executions():
                 'runtime_ms': log.get('summary', {}).get('runtime_ms', 0),
                 'peak_cpu': log.get('summary', {}).get('peak_cpu', 0),
                 'peak_memory_kb': log.get('summary', {}).get('peak_memory_kb', 0),
+                'memory_growth_kb': mem_growth,
+                'memory_samples': sample_count,
                 'blocked_syscalls': log.get('summary', {}).get('blocked_syscalls', 0),
                 'exit_reason': log.get('summary', {}).get('exit_reason', 'UNKNOWN'),
-                'risk_level': analysis.get('risk_level', 'UNKNOWN'),
+                'risk_level': final_risk,
                 'risk_score': risk_score['score'],
                 'risk_classification': risk_score['risk_level']
             })
@@ -370,6 +509,134 @@ def get_risk_by_profile():
     
     except Exception as e:
         print(f"[ERROR] Failed to get profile comparison: {e}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 200
+@app.route('/api/analytics/scenario/<scenario_name>')
+def get_scenario_analytics(scenario_name):
+    """
+    Get aggregated analytics for a specific scenario (Section B & C).
+    Strict filtering and aggregation logic.
+    """
+    try:
+        logs = analytics_service.load_all_logs()
+        
+        # 1. Filter logs based on Scenario Rules
+        matching_logs = []
+        for log in logs:
+            timeline = log.get('timeline', {})
+            summary = log.get('summary', {})
+            exit_reason = summary.get('exit_reason', 'UNKNOWN')
+            
+            # Safe metric extraction
+            cpu_samples = timeline.get('cpu_percent', [])
+            mem_samples = timeline.get('memory_kb', [])
+            sample_count = len(timeline.get('time_ms', []))
+            peak_cpu = summary.get('peak_cpu', 0)
+            
+            mem_growth = 0
+            if len(mem_samples) >= 2:
+                mem_growth = mem_samples[-1] - mem_samples[0]
+            
+            is_match = False
+            
+            if scenario_name == 'cpu_stress':
+                # Rule: max(cpu) >= 80 AND samples >= 5
+                # Using summary peak_cpu is safer/faster
+                if peak_cpu >= 80 and sample_count >= 5:
+                    is_match = True
+            
+            elif scenario_name == 'memory_leak':
+                # Rule: growth > 5000 AND samples >= 5
+                if mem_growth > 5000 and sample_count >= 5:
+                    is_match = True
+                    
+            elif scenario_name == 'policy_violation':
+                # Rule: exit_reason == "SECURITY_VIOLATION"
+                if "SECURITY_VIOLATION" in exit_reason:
+                    is_match = True
+                    
+            elif scenario_name == 'normal_program':
+                # Rule: EXITED(0) AND cpu < 50 AND growth == 0 (stable)
+                if "EXITED(0)" in exit_reason and peak_cpu < 50 and mem_growth <= 100: # allow tiny fluctuation
+                    is_match = True
+            
+            if is_match:
+                matching_logs.append(log)
+        
+        if not matching_logs:
+            return jsonify({'error': 'No matching executions found for this scenario', 'count': 0})
+
+        # 2. Aggregate Metrics (Section B)
+        runtimes = [l.get('summary', {}).get('runtime_ms', 0) for l in matching_logs]
+        peak_cpus = [l.get('summary', {}).get('peak_cpu', 0) for l in matching_logs]
+        peak_mems = [l.get('summary', {}).get('peak_memory_kb', 0) for l in matching_logs]
+        
+        avg_runtime = int(sum(runtimes) / len(runtimes))
+        peak_cpu_range = f"{min(peak_cpus)}-{max(peak_cpus)}%"
+        peak_mem_range = f"{min(peak_mems)}-{max(peak_mems)} KB"
+        
+        # Risk Distribution in selected set
+        risk_counts = {}
+        for l in matching_logs:
+            pid = l.get('pid')
+            analysis = analytics_service.get_execution_analysis(pid)
+            risk = analysis.get('risk_level', 'UNKNOWN')
+            risk_counts[risk] = risk_counts.get(risk, 0) + 1
+            
+        dominant_risk = max(risk_counts, key=risk_counts.get) if risk_counts else "UNKNOWN"
+
+        # 3. Calculate Overhead (Section C)
+        # Compare STRICT vs LEARNING profiles within the matching set
+        strict_apps = [l for l in matching_logs if l.get('profile') == 'STRICT']
+        learning_apps = [l for l in matching_logs if l.get('profile') == 'LEARNING']
+        
+        overhead_pct = 0
+        overhead_msg = "Not computed (Requires paired runs)"
+        
+        if strict_apps and learning_apps:
+            avg_strict = sum([l.get('summary', {}).get('runtime_ms', 0) for l in strict_apps]) / len(strict_apps)
+            avg_learning = sum([l.get('summary', {}).get('runtime_ms', 0) for l in learning_apps]) / len(learning_apps)
+            
+            if avg_learning > 0:
+                overhead_pct = ((avg_strict - avg_learning) / avg_learning) * 100
+                overhead_msg = f"{overhead_pct:.1f}% (STRICT vs LEARNING)"
+            else:
+                overhead_msg = "Invalid Baseline (0ms)"
+        
+        # Detection Latency (Hardcoded Logic per rules)
+        latency_val = "N/A"
+        latency_reason = "No monitoring"
+        
+        if scenario_name == 'policy_violation':
+            latency_val = "Immediate"
+            latency_reason = "Kernel Trap (Seccomp)"
+        elif scenario_name == 'normal_program':
+            latency_val = "N/A"
+            latency_reason = "No anomalies"
+        else:
+             latency_val = "~500 ms"
+             latency_reason = "Heuristic (5 samples × 100ms)"
+
+        return jsonify({
+            'scenario': scenario_name,
+            'count': len(matching_logs),
+            'metrics': {
+                'avg_runtime': avg_runtime,
+                'peak_cpu_range': peak_cpu_range,
+                'peak_mem_range': peak_mem_range,
+                'dominant_risk': dominant_risk,
+                'enforcement': "Blocked" if "violation" in scenario_name else "Allowed"
+            },
+            'analysis': {
+                'overhead': overhead_msg,
+                'latency': latency_val,
+                'latency_reason': latency_reason
+            },
+            'samples': [l.get('pid') for l in matching_logs[:5]] # Return top 5 PIDs for proof
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Scenario analytics failed: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 200
 

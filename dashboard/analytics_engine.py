@@ -70,9 +70,13 @@ class BehavioralAnalyzer:
         
         mem_behavior = self._analyze_memory_growth(timeline, summary)
         if mem_behavior:
-            analysis['detected_behaviors'].append(mem_behavior['behavior'])
-            analysis['explanations'][mem_behavior['behavior']] = mem_behavior['explanation']
+            # Always capture metrics
             analysis['metrics']['memory'] = mem_behavior['metrics']
+            
+            # Conditionally capture behavior if detected
+            if mem_behavior.get('behavior'):
+                analysis['detected_behaviors'].append(mem_behavior['behavior'])
+                analysis['explanations'][mem_behavior['behavior']] = mem_behavior['explanation']
         
         io_behavior = self._analyze_io_activity(summary)
         if io_behavior:
@@ -137,49 +141,42 @@ class BehavioralAnalyzer:
         peak_memory = summary.get('peak_memory_kb', 0)
         page_faults_major = summary.get('page_faults_major', 0)
         
-        if len(mem_samples) < 3:
-            return None
-        
-        # Check for memory growth pattern (can be stepped/gradual)
-        # Calculate total growth and check if it's significant
-        total_growth = mem_samples[-1] - mem_samples[0]
-        growth_rate = total_growth / len(mem_samples)
-        
-        # Check if there's substantial growth (more than just noise)
-        # Phase 3 test: memory_leak grows from 3.8 MB to 105 MB (~1600 KB/sample average)
-        # But many samples plateau, so use total growth and min samples
-        if total_growth > 10000:  # > 10 MB total growth (easy to detect leaks)
-            # Count how many samples contributed to growth
-            max_so_far = mem_samples[0]
-            growth_steps = 0
-            for m in mem_samples[1:]:
-                if m > max_so_far:
-                    growth_steps += 1
-                    max_so_far = m
+        # Calculate growth metrics (Rule 1 & 2)
+        samples = len(mem_samples)
+        growth_kb = 0
+        if samples >= 2:
+            growth_kb = mem_samples[-1] - mem_samples[0]
             
-            if growth_steps >= 3:  # At least 3 growth events
-                return {
-                    'behavior': 'MONOTONIC_MEMORY_GROWTH',
-                    'explanation': (
-                        f"Memory grew from {mem_samples[0]} KB to {mem_samples[-1]} KB "
-                        f"({peak_memory} KB peak). Total growth: {total_growth} KB. "
-                        f"Memory increased in {growth_steps} steps across {len(mem_samples)} samples. "
-                        f"Major page faults: {page_faults_major}. "
-                        f"This pattern is characteristic of progressive resource allocation or memory leak. "
-                        f"Source: /proc/[pid]/status (VmPeak field) and /proc/[pid]/stat (page fault counters)."
-                    ),
-                    'metrics': {
-                        'peak_memory_kb': peak_memory,
-                        'starting_memory_kb': mem_samples[0],
-                        'ending_memory_kb': mem_samples[-1],
-                        'total_growth_kb': total_growth,
-                        'growth_steps': growth_steps,
-                        'total_samples': len(mem_samples),
-                        'page_faults_major': page_faults_major
-                    }
-                }
+        # Metrics dict to be returned regardless of detection
+        metrics = {
+            'peak_memory_kb': peak_memory,
+            'starting_memory_kb': mem_samples[0] if samples > 0 else 0,
+            'ending_memory_kb': mem_samples[-1] if samples > 0 else 0,
+            'memory_growth_kb': growth_kb,
+            'memory_samples': samples,
+            'page_faults_major': page_faults_major
+        }
         
-        return None
+        # Heuristic Classification Rule (Rule 2)
+        # 1. Growth > 5000 KB
+        # 2. Samples >= 5 (to avoid short-lived noise)
+        if growth_kb > 5000 and samples >= 5:
+            return {
+                'behavior': 'MONOTONIC_MEMORY_GROWTH',
+                'explanation': (
+                    f"Memory grew by {growth_kb} KB over {samples} samples. "
+                    f"Ends at {metrics['ending_memory_kb']} KB. "
+                    f"This exceeds the 5000 KB threshold for leak detection. "
+                    f"Source: /proc/[pid]/status (VmPeak)."
+                ),
+                'metrics': metrics
+            }
+            
+        # Return metrics even if no behavior detected (for dashboard display)
+        return {
+            'behavior': None, 
+            'metrics': metrics
+        }
     
     def _analyze_io_activity(self, summary: Dict) -> Dict or None:
         """Detect abnormally high I/O syscall rate"""

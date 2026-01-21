@@ -1,61 +1,237 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>System Comparison & Evaluation - Phase 6</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; }
-        
-        .header { background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); color: white; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-        .header p { font-size: 0.95rem; opacity: 0.95; }
-        
-        .nav-bar { background: white; padding: 1rem 2rem; border-bottom: 1px solid #e0e0e0; display: flex; gap: 2rem; }
-        .nav-link { text-decoration: none; color: #666; font-weight: 500; transition: color 0.2s; }
-        .nav-link:hover { color: #2c3e50; }
-        .nav-link.active { color: #2c3e50; border-bottom: 2px solid #2c3e50; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 0.95rem;
+            opacity: 0.95;
+        }
+
+        .nav-bar {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #666;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: #2c3e50;
+        }
+
+        .nav-link.active {
+            color: #2c3e50;
+            border-bottom: 2px solid #2c3e50;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
         /* Section Styling */
-        .section { background: white; border-radius: 8px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .section-header { margin-bottom: 1.5rem; border-bottom: 2px solid #f0f0f0; padding-bottom: 1rem; }
-        .section-title { font-size: 1.5rem; color: #2c3e50; }
-        .section-subtitle { color: #7f8c8d; font-size: 0.9rem; margin-top: 0.5rem; }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header {
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #2c3e50;
+        }
+
+        .section-subtitle {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
 
         /* Comparison Table */
-        .comparison-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-        .comparison-table th, .comparison-table td { padding: 1rem; text-align: left; border-bottom: 1px solid #eee; }
-        .comparison-table th { background-color: #f8f9fa; font-weight: 600; color: #2c3e50; }
-        .comparison-table tr:hover { background-color: #f8f9fa; }
-        .badge-conceptual { background: #e0e0e0; color: #555; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; }
-        .badge-measured { background: #e3f2fd; color: #1976d2; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .comparison-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .comparison-table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .badge-conceptual {
+            background: #e0e0e0;
+            color: #555;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .badge-measured {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
 
         /* Replay Controls */
-        .control-panel { display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: center; background: #f8f9fa; padding: 1rem; border-radius: 6px; }
-        select { padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 200px; }
-        button.play-btn { background: #2c3e50; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
-        button.play-btn:hover { background: #34495e; }
+        .control-panel {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+        }
+
+        select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-width: 200px;
+        }
+
+        button.play-btn {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button.play-btn:hover {
+            background: #34495e;
+        }
 
         /* Grid Layout */
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
-        .metric-card { background: #fdfdfd; border: 1px solid #eee; padding: 1.5rem; border-radius: 6px; }
-        .metric-label { font-size: 0.85rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: 0.5px; }
-        .metric-value { font-size: 1.8rem; font-weight: bold; color: #2c3e50; margin: 0.5rem 0; }
-        .metric-context { font-size: 0.8rem; color: #95a5a6; }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
 
-        .latency-card { border-left: 4px solid #f1c40f; }
-        .overhead-card { border-left: 4px solid #e74c3c; }
-        .security-card { border-left: 4px solid #27ae60; }
+        .metric-card {
+            background: #fdfdfd;
+            border: 1px solid #eee;
+            padding: 1.5rem;
+            border-radius: 6px;
+        }
 
-        .log-proof { font-family: monospace; background: #333; color: #0f0; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; margin-top: 1rem; word-break: break-all; }
+        .metric-label {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-        .disclaimer { text-align: center; color: #95a5a6; font-size: 0.85rem; margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #eee; }
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 0.5rem 0;
+        }
+
+        .metric-context {
+            font-size: 0.8rem;
+            color: #95a5a6;
+        }
+
+        .latency-card {
+            border-left: 4px solid #f1c40f;
+        }
+
+        .overhead-card {
+            border-left: 4px solid #e74c3c;
+        }
+
+        .security-card {
+            border-left: 4px solid #27ae60;
+        }
+
+        .log-proof {
+            font-family: monospace;
+            background: #333;
+            color: #0f0;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-top: 1rem;
+            word-break: break-all;
+        }
+
+        .disclaimer {
+            text-align: center;
+            color: #95a5a6;
+            font-size: 0.85rem;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="header">
@@ -74,7 +250,8 @@
         <div class="section">
             <div class="section-header">
                 <h2 class="section-title">A. Conceptual Architecture Comparison</h2>
-                <p class="section-subtitle">Comparing architectural capabilities against industry standards. <span class="badge-conceptual">Conceptual Baseline</span></p>
+                <p class="section-subtitle">Comparing architectural capabilities against industry standards. <span
+                        class="badge-conceptual">Conceptual Baseline</span></p>
             </div>
             <table class="comparison-table">
                 <thead>
@@ -118,7 +295,8 @@
         <div class="section">
             <div class="section-header">
                 <h2 class="section-title">B. Empirical Performance Replay</h2>
-                <p class="section-subtitle">Replay existing logs to verify detection capabilities and performance impact.</p>
+                <p class="section-subtitle">Replay existing logs to verify detection capabilities and performance
+                    impact.</p>
             </div>
 
             <div class="control-panel">
@@ -137,14 +315,14 @@
                 <div class="metrics-grid">
                     <!-- Execution Stats -->
                     <div class="metric-card">
-                        <div class="metric-label">Runtime Duration</div>
+                        <div class="metric-label">Avg Runtime</div>
                         <div class="metric-value" id="valRuntime">0 ms</div>
-                        <div class="metric-context">Total execution wall time</div>
+                        <div class="metric-context" id="ctxRuntime">Across N executions</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-label">Peak Resource</div>
+                        <div class="metric-label">Peak Resource Range</div>
                         <div class="metric-value" id="valPeak">0%</div>
-                        <div class="metric-context" id="ctxPeak">CPU Usage</div>
+                        <div class="metric-context" id="ctxPeak">Min-Max Range</div>
                     </div>
                     <div class="metric-card security-card">
                         <div class="metric-label">Enforcement</div>
@@ -152,15 +330,43 @@
                         <div class="metric-context" id="ctxAction">Policy decision</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-label">Risk Profile</div>
+                        <div class="metric-label">Dominant Risk Profile</div>
                         <div class="metric-value" id="valRisk">NORMAL</div>
-                        <div class="metric-context" id="ctxRisk">Score: 0</div>
+                        <div class="metric-context" id="ctxRisk">Heuristic Consensus</div>
                     </div>
                 </div>
 
                 <div class="log-proof" id="logProof">
                     <!-- populated via JS -->
                 </div>
+
+                <!-- Scenario Replay Capability Comparison Block -->
+                <h3 style="margin-top: 2rem; color: #2c3e50; font-size: 1.1rem;">Scenario Replay Capability Comparison
+                </h3>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Capability</th>
+                            <th>Docker</th>
+                            <th>SELinux</th>
+                            <th>My OS Sandbox</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Replay Support</strong></td>
+                            <td><span class="badge-conceptual">No</span></td>
+                            <td><span class="badge-conceptual">No</span></td>
+                            <td><span class="badge-measured">Yes</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Mechanism</strong></td>
+                            <td>No behavioral telemetry</td>
+                            <td>Static enforcement only</td>
+                            <td>Aggregated telemetry replay</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -171,201 +377,123 @@
                 <p class="section-subtitle">Derived metrics calculated from the selected replay log.</p>
             </div>
 
-            <div id="analyticsDisplay" style="display: none;" class="metrics-grid">
-                
-                <!-- Latency -->
-                <div class="metric-card latency-card">
-                    <div class="metric-label">Detection Latency</div>
-                    <div class="metric-value" id="valLatency">--</div>
-                    <div class="metric-context" id="ctxLatency">Derivation rule applied</div>
-                </div>
-
-                <!-- Overhead -->
-                <div class="metric-card overhead-card">
-                    <div class="metric-label">System Overhead</div>
-                    <div class="metric-value" id="valOverhead">--</div>
-                    <div class="metric-context">Compared to internal baseline</div>
-                </div>
-
-            </div>
             <div id="analyticsPlaceholder" style="color:#999; font-style:italic;">
                 Select a scenario in Section B to view analysis.
+            </div>
+
+            <div id="analyticsDisplay" style="display: none;">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Docker (Conceptual)</th>
+                            <th>SELinux (Conceptual)</th>
+                            <th>My OS Sandbox (Measured)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Detection Latency</strong></td>
+                            <td><span class="badge-conceptual">N/A</span><br><small>No runtime detection</small></td>
+                            <td><span class="badge-conceptual">N/A</span><br><small>Static enforcement</small></td>
+                            <td>
+                                <span class="badge-measured" id="valLatency">--</span><br>
+                                <small id="ctxLatency">Derivation rule applied</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>System Overhead</strong></td>
+                            <td><span class="badge-conceptual">Low</span><br><small>Isolation only</small></td>
+                            <td><span class="badge-conceptual">Negligible</span><br><small>Kernel checks</small></td>
+                            <td>
+                                <span class="badge-measured" id="valOverhead">--</span><br>
+                                <small id="ctxOverhead">Compared to baseline</small>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
         <div class="disclaimer">
-            <p><strong>Methodology Note:</strong> "Docker" and "SELinux" columns are conceptual baselines for context only. All numeric data shown is derived strictly from actual "My Sandbox" telemetry logs. No simulated values are used.</p>
+            <p><strong>Methodology Note:</strong> "Docker" and "SELinux" columns are conceptual baselines for context
+                only. All numeric data shown is derived strictly from actual "My Sandbox" telemetry logs. No simulated
+                values are used.</p>
         </div>
 
     </div>
 
     <script>
-        // Data Cache
-        let allExecutions = [];
-
-        // Load data on start
-        window.addEventListener('DOMContentLoaded', async () => {
-            try {
-                const res = await fetch('/api/analytics/executions');
-                const data = await res.json();
-                allExecutions = data.executions || [];
-                console.log("Loaded executions:", allExecutions.length);
-            } catch (e) {
-                console.error("Failed to load executions", e);
-            }
-        });
-
         async function loadScenario() {
             const scenario = document.getElementById('scenarioSelect').value;
             if (!scenario) return;
 
-            // map scenario to program path substring
-            const map = {
-                'cpu_stress': 'cpu_stress',
-                'memory_leak': 'memory_leak',
-                'policy_violation': 'policy_violation',
-                'normal_program': 'normal_program'
-            };
-            const programKey = map[scenario];
+            try {
+                // Fetch Aggregated Scenario Analytics
+                const res = await fetch(`/api/analytics/scenario/${scenario}`);
+                const data = await res.json();
 
-            // Filter executions for this scenario
-            // Prefer existing logs if available, sort by recent
-            const candidates = allExecutions.filter(e => e.program.includes(programKey));
-            
-            if (candidates.length === 0) {
-                alert("No logs found for this scenario. Please run the test program first.");
-                return;
-            }
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
 
-            // Pick the most recent one for display
-            const targetRun = candidates[candidates.length - 1]; // last one
-            
-            // Render basic details
-            renderRunDetails(targetRun);
-            
-            // Calculate Analytics (Latency/Overhead)
-            renderAnalytics(targetRun, candidates);
-        }
+                // Show containers
+                document.getElementById('metricsDisplay').style.display = 'block';
+                document.getElementById('analyticsDisplay').style.display = 'grid';
+                document.getElementById('analyticsPlaceholder').style.display = 'none';
 
-        async function renderRunDetails(runMeta) {
-            // Fetch full details
-            const res = await fetch(`/api/analytics/execution/${runMeta.pid}`);
-            const fullData = await res.json();
-            const summary = fullData.summary;
+                // --- Section B: Empirical Replay ---
 
-            // Show container
-            document.getElementById('metricsDisplay').style.display = 'block';
-            document.getElementById('analyticsDisplay').style.display = 'grid';
-            document.getElementById('analyticsPlaceholder').style.display = 'none';
+                // 1. Avg Runtime
+                document.getElementById('valRuntime').innerText = `${data.metrics.avg_runtime} ms`;
+                document.getElementById('ctxRuntime').innerText = `Average of ${data.count} executions`;
 
-            // 1. Runtime
-            document.getElementById('valRuntime').innerText = `${summary.runtime_ms} ms`;
+                // 2. Peak Resource
+                if (scenario.includes('memory')) {
+                    document.getElementById('valPeak').innerText = data.metrics.peak_mem_range;
+                    document.getElementById('ctxPeak').innerText = "Peak Memory Range (KB)";
+                } else {
+                    document.getElementById('valPeak').innerText = data.metrics.peak_cpu_range;
+                    document.getElementById('ctxPeak').innerText = "Peak CPU Range (%)";
+                }
 
-            // 2. Peak Resource
-            if (runMeta.program.includes('memory')) {
-                document.getElementById('valPeak').innerText = `${Math.round(summary.peak_memory_kb / 1024)} MB`;
-                document.getElementById('ctxPeak').innerText = 'Peak Memory';
-            } else {
-                document.getElementById('valPeak').innerText = `${summary.peak_cpu}%`;
-                document.getElementById('ctxPeak').innerText = 'Peak CPU';
-            }
+                // 3. Enforcement
+                const enforcement = data.metrics.enforcement;
+                const elAction = document.getElementById('valAction');
+                elAction.innerText = enforcement;
+                if (enforcement === "Blocked") {
+                    elAction.style.color = "#c0392b";
+                    document.getElementById('ctxAction').innerText = "Security Interventions";
+                } else {
+                    elAction.style.color = "#27ae60";
+                    document.getElementById('ctxAction').innerText = "Normal Operation";
+                }
 
-            // 3. Enforcement
-            if (summary.termination || summary.blocked_syscalls > 0) {
-                document.getElementById('valAction').innerText = "BLOCKED";
-                document.getElementById('valAction').style.color = "#c0392b";
-                document.getElementById('ctxAction').innerText = summary.termination || `Blocked ${summary.blocked_syscalls} syscalls`;
-            } else {
-                document.getElementById('valAction').innerText = "Allowed";
-                document.getElementById('valAction').style.color = "#27ae60";
-                document.getElementById('ctxAction').innerText = "Execution completed";
-            }
+                // 4. Dominant Risk
+                document.getElementById('valRisk').innerText = data.metrics.dominant_risk;
 
-            // 4. Risk
-            document.getElementById('valRisk').innerText = runMeta.risk_level;
-            document.getElementById('ctxRisk').innerText = `Score: ${fullData.risk_score?.total_score || 'N/A'}`;
+                // Proof
+                document.getElementById('selectedRunInfo').innerText = `Aggregated from ${data.count} logs`;
+                document.getElementById('logProof').innerText = `> DATASET: ${data.count} logs matching '${scenario}' criteria\n> SAMPLE PIDS: ${data.samples.join(', ')}...`;
 
-            // Proof
-            document.getElementById('selectedRunInfo').innerText = `Viewing Log: run_${runMeta.pid} | ${(new Date(runMeta.timestamp * 1000)).toLocaleString()}`;
-            document.getElementById('logProof').innerText = `> SOURCE: logs/run_${runMeta.pid}_[timestamp].json\n> PROGRAM: ${runMeta.program}\n> PROFILE: ${runMeta.profile}`;
-        }
+                // --- Section C: Analytics ---
 
-        function renderAnalytics(currentRun, allCandidates) {
-            // --- 1. Latency Calculation ---
-            const latencyEl = document.getElementById('valLatency');
-            const latencyCtx = document.getElementById('ctxLatency');
+                // 1. Latency
+                document.getElementById('valLatency').innerText = data.analysis.latency;
+                document.getElementById('ctxLatency').innerText = data.analysis.latency_reason;
 
-            if (currentRun.program.includes('policy_violation')) {
-                // Seccomp is immediate
-                latencyEl.innerText = "Immediate";
-                latencyCtx.innerText = "Kernel Trap (Seccomp)";
-            } else if (currentRun.program.includes('normal')) {
-                latencyEl.innerText = "N/A";
-                latencyCtx.innerText = "No anomalies to detect";
-            } else {
-                // Heuristic: Samples * Interval
-                // We know monitor interval is 100ms
-                // "Sustained High CPU" is usually 5 samples
-                latencyEl.innerText = "~500 ms";
-                latencyCtx.innerText = "Heuristic (5 samples × 100ms)";
-            }
+                // 2. Overhead
+                document.getElementById('valOverhead').innerText = data.analysis.overhead;
+                document.getElementById('ctxOverhead').innerText = "Metric: Avg Runtime (STRICT vs LEARNING)";
 
-            // --- 2. Overhead Calculation ---
-            const overheadEl = document.getElementById('valOverhead');
-            overheadEl.innerText = "--"; 
-            
-            // Try to find a baseline (LEARNING) vs STRICT comparison
-            // If current is STRICT, look for LEARNING. If current is LEARNING, look for STRICT.
-            // Only valid for same program.
-            
-            const currentProfile = currentRun.profile;
-            const otherProfile = currentProfile === 'STRICT' ? 'LEARNING' : 'STRICT';
-            
-            const baselineRun = allCandidates.find(e => e.profile === otherProfile);
-
-            if (baselineRun && currentRun.program.includes('normal')) {
-                // Only calculate overhead for normal programs where behavioral logic shouldn't interfere too much
-                // or just show the delta.
-                // We need runtime for both. We only have runtime for current. We need to fetch baseline.
-                fetch(`/api/analytics/execution/${baselineRun.pid}`)
-                    .then(r => r.json())
-                    .then(baseData => {
-                        const t1 = currentRun.runtime_ms || baseData.summary.runtime_ms; // metadata might not have it, summary does
-                        // Wait, fetching metadata list returns partial info? API check:
-                        // /api/analytics/executions returns { execution.summary.runtime_ms } ? No, usually just metadata.
-                        // We have currentRun complete data in 'fullData' scope above... wait, separate function.
-                        // Let's assume we need to fetch.
-                        
-                        // We'll just update text if we find it.
-                        const baseTime = baseData.summary.runtime_ms;
-                        // We need the current time. We rendered it in renderRunDetails.
-                        // Let's grab it from DOM or pass it.
-                        // Ideally pass it. For now, fetch current again or store it.
-                         fetch(`/api/analytics/execution/${currentRun.pid}`).then(r=>r.json()).then(currData => {
-                             const currTime = currData.summary.runtime_ms;
-                             
-                             let diff = 0;
-                             let pct = 0;
-                             
-                             if (currentProfile === 'STRICT') {
-                                 diff = currTime - baseTime;
-                                 pct = (diff / baseTime) * 100;
-                                 overheadEl.innerText = `+${Math.round(pct)}%`;
-                                 overheadEl.parentElement.querySelector('.metric-context').innerText = `vs ${otherProfile} (${baseTime}ms)`;
-                             } else {
-                                 diff = baseTime - currTime;
-                                 pct = (diff / currTime) * 100;
-                                 overheadEl.innerText = `Reference`;
-                                 overheadEl.parentElement.querySelector('.metric-context').innerText = `(Compare with STRICT)`;
-                             }
-                         });
-                    });
-            } else {
-                overheadEl.innerText = "N/A";
-                overheadEl.parentElement.querySelector('.metric-context').innerText = "Requires pair (LEARNING/STRICT)";
+            } catch (e) {
+                console.error("Scenario load failed", e);
+                alert("Failed to load scenario data. Check console.");
             }
         }
     </script>
 
 </body>
+
 </html>

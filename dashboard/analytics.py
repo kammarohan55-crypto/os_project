@@ -74,9 +74,11 @@ def extract_features(logs):
         if mem_samples and len(mem_samples) >= 2:
             # Memory growth rate (KB per sample)
             feature_row['memory_growth_rate'] = float((mem_samples[-1] - mem_samples[0]) / len(mem_samples))
+            feature_row['memory_growth_kb'] = int(mem_samples[-1] - mem_samples[0])
             feature_row['avg_memory_kb'] = int(np.mean(mem_samples))
         else:
             feature_row['memory_growth_rate'] = 0.0
+            feature_row['memory_growth_kb'] = 0
             feature_row['avg_memory_kb'] = feature_row['peak_memory_kb']
         
         features.append(feature_row)

@@ -212,10 +212,10 @@
                         <th>Profile</th>
                         <th>Runtime</th>
                         <th>CPU %</th>
-                        <th>Memory KB</th>
+                        <th>Memory Growth</th>
                         <th>Exit Reason</th>
-                        <th>ML Prediction</th>
-                        <th>Confidence</th>
+                        <th>Risk Assessment (Final)</th>
+                        <th>ML Pattern Match (Info)</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -261,17 +261,59 @@
                 (stats.runs || []).slice(0, 15).forEach(run => {
                     const tr = document.createElement('tr');
                     const predClass = run.prediction === 'Malicious' ? 'badge-malicious' :
-                        run.prediction === 'Buggy' ? 'badge-buggy' : 'badge-benign';
+                        run.prediction === 'Buggy' ? 'badge-buggy' :
+                            run.prediction === 'Resource-Anomalous' ? 'badge-buggy' :
+                                run.prediction === 'Ignored' ? 'badge-benign' : 'badge-benign';
+
+                    // Memory Cell Logic
+                    const peakMem = run.peak_memory_kb || 0;
+                    const growthInv = run.memory_growth_kb || 0;
+
+                    let memSubtext = `<div style="font-size:0.8em; color:#999">Stable</div>`;
+                    if (run.memory_samples < 2) {
+                        memSubtext = `<div style="font-size:0.8em; color:#999">Baseline only</div>`;
+                    } else if (growthInv > 0) {
+                        const color = growthInv > 5000 ? '#dc3545' : '#28a745';
+                        memSubtext = `<div style="font-size:0.8em; font-weight:bold; color:${color}">+${growthInv} KB</div>`;
+                    }
+
+                    let memDisplay = `
+                        <div>${peakMem.toLocaleString()} KB</div>
+                        ${memSubtext}
+                    `;
+
+                    // Risk Cell Logic (Final Risk is Heuristic)
+                    const finalRisk = run.final_risk || 'UNKNOWN';
+                    let riskDisplay = `<span class="badge badge-benign">${finalRisk}</span>`;
+
+                    if (finalRisk === 'HIGH' || finalRisk === 'CRITICAL' || finalRisk.includes('MEMORY_LEAK') || finalRisk === 'POLICY_VIOLATION') {
+                        riskDisplay = `<span class="badge badge-malicious">${finalRisk}</span>`;
+                    } else if (finalRisk === 'MEDIUM' || finalRisk.includes('CPU_HOG')) {
+                        riskDisplay = `<span class="badge badge-buggy">${finalRisk}</span>`;
+                    } else if (finalRisk === 'SHORT_LIVED_UTILITY') {
+                        riskDisplay = `<span style="color:#666; font-style:italic" title="Insufficient telemetry">Short-lived (Benign)</span>`;
+                    } else if (finalRisk === 'UNKNOWN') {
+                        riskDisplay = `<span style="color:#999; font-style:italic">Unknown</span>`;
+                    }
+
+                    // ML Cell Logic (Informational)
+                    let mlDisplay = `<span class="badge ${predClass}">${run.prediction || 'Pending'}</span>`;
+                    if (run.prediction === 'Ignored') {
+                        mlDisplay = `<span style="color:#999; font-style:italic">Ignored</span>`;
+                    }
 
                     tr.innerHTML = `
                         <td>${run.program || 'N/A'}</td>
                         <td>${run.profile || 'N/A'}</td>
                         <td>${run.runtime_ms || 0}ms</td>
                         <td>${run.peak_cpu || run.cpu_usage_percent || 0}%</td>
-                        <td>${run.peak_memory_kb || run.memory_peak_kb || 0}</td>
+                        <td>${memDisplay}</td>
                         <td>${run.exit_reason || 'N/A'}</td>
-                        <td><span class="badge ${predClass}">${run.prediction || 'N/A'}</span></td>
-                        <td>${run.confidence || 0}%</td>
+                        <td>${riskDisplay}</td>
+                        <td>
+                            <div style="margin-bottom:4px">${mlDisplay}</div>
+                            <div style="font-size:0.8em; color:#666">Conf: ${run.confidence || 0}%</div>
+                        </td>
                     `;
                     tbody.appendChild(tr);
                 });
