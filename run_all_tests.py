@@ -18,6 +18,24 @@ print("OS SANDBOX - COMPLETE TEST SUITE")
 print("=" * 60)
 print()
 
+# CRITICAL: Ensure build succeeds before testing
+print("🔨 Checking build status...")
+if not os.path.exists("runner/launcher"):
+    print("❌ FAIL: runner/launcher not found!")
+    print()
+    print("  Please run: make")
+    print("  Or: bash setup.sh")
+    exit(1)
+
+# Ensure launcher is executable
+if not os.access("runner/launcher", os.X_OK):
+    print("⚠️  Warning: launcher not executable, fixing...")
+    os.chmod("runner/launcher", 0o755)
+    print("✅  Fixed permissions")
+
+print("✅ Build verified")
+print()
+
 # Clean old logs
 print("🧹 Cleaning old logs...")
 for log in Path("logs").glob("*.json"):
