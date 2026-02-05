@@ -1,6 +1,8 @@
 from flask import Flask, render_template, jsonify, request
 import pandas as pd
 import traceback
+import threading
+from pathlib import Path
 from ml_model import RiskClassifier
 from analytics import load_all_logs, extract_features, compute_statistics, get_syscall_frequency
 from analytics_engine import AnalyticsService
@@ -8,10 +10,14 @@ from risk_scoring import RiskScoringService
 
 app = Flask(__name__)
 
-# Global state (cached)
+# Global state (cached) - NOW THREAD-SAFE
 classifier = RiskClassifier()
-cached_features = None
-last_log_count = 0
+_cache_lock = threading.Lock()
+_feature_cache = {
+    'df': None,
+    'log_signatures': {}  # {filename: (mtime, size)}
+}
+
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,29 +26,57 @@ LOGS_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "logs"))
 analytics_service = AnalyticsService(LOGS_DIR)
 risk_scoring_service = RiskScoringService()  # Phase 5: Risk scoring
 
+def _get_cache_signature(log_dir):
+    """Generate cache signature from file modification times and sizes"""
+    sig = {}
+    log_path = Path(log_dir)
+    if not log_path.exists():
+        return sig
+    
+    for log_file in log_path.glob('*.json'):
+        try:
+            stat = log_file.stat()
+            sig[log_file.name] = (stat.st_mtime, stat.st_size)
+        except OSError:
+            continue
+    return sig
+
 def get_feature_dataframe():
     """
     CRITICAL: Single source of truth for all data
+    NOW WITH ROBUST CACHE INVALIDATION
     
     Returns: pandas DataFrame with extracted features
     """
-    global cached_features, last_log_count
+    global _feature_cache
     
     try:
-        logs = load_all_logs(LOGS_DIR)
+        # Generate current signature
+        current_sig = _get_cache_signature(LOGS_DIR)
         
-        # Cache invalidation
-        if len(logs) != last_log_count:
-            print(f"[Analytics] Extracting features from {len(logs)} logs...")
-            cached_features = extract_features(logs)
-            last_log_count = len(logs)
+        # Thread-safe cache check
+        with _cache_lock:
+            # Cache hit: signatures match AND df exists
+            if (_feature_cache['log_signatures'] == current_sig and 
+                _feature_cache['df'] is not None):
+                return _feature_cache['df'].copy()  # Return copy for safety
             
-            # Train ML once when data changes
-            if len(cached_features) > 0:
-                print(f"[ML] Training on {len(cached_features)} samples...")
-                classifier.train(cached_features)
-        
-        return cached_features if cached_features is not None else pd.DataFrame()
+            # Cache miss: rebuild
+            logs = load_all_logs(LOGS_DIR)
+            print(f"[Analytics] Extracting features from {len(logs)} logs...")
+            
+            df = extract_features(logs)
+            
+            # Train ML when data changes
+            if len(df) > 0:
+                print(f"[ML] Training on {len(df)} samples...")
+                classifier.train(df)
+            
+            # Update cache
+            _feature_cache['df'] = df
+            _feature_cache['log_signatures'] = current_sig
+            
+            return df.copy()
     
     except Exception as e:
         print(f"[ERROR] Feature extraction failed: {e}")

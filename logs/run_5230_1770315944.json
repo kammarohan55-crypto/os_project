@@ -1,6 +1,6 @@
 {
-  "pid": 2449,
-  "program": "./test_programs/normal_program",
+  "pid": 5230,
+  "program": "test_programs/syscall_flood",
   "profile": "LEARNING",
   "timeline": {
     "time_ms": [1],
@@ -11,7 +11,7 @@
     "runtime_ms": 102,
     "peak_cpu": 0,
     "peak_memory_kb": 3840,
-    "page_faults_minor": 7,
+    "page_faults_minor": 45,
     "page_faults_major": 0,
     "read_syscalls": 0,
     "write_syscalls": 0,

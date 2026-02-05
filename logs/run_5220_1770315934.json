@@ -1,7 +1,7 @@
 {
-  "pid": 2447,
-  "program": "./test_programs/policy_violation",
-  "profile": "STRICT",
+  "pid": 5220,
+  "program": "test_programs/normal_program",
+  "profile": "LEARNING",
   "timeline": {
     "time_ms": [2],
     "cpu_percent": [0],
@@ -11,13 +11,13 @@
     "runtime_ms": 102,
     "peak_cpu": 0,
     "peak_memory_kb": 3840,
-    "page_faults_minor": 0,
+    "page_faults_minor": 45,
     "page_faults_major": 0,
     "read_syscalls": 0,
     "write_syscalls": 0,
-    "blocked_syscalls": 1,
-    "termination": "SIG31",
-    "blocked_syscall": "Unknown(SIGSYS)",
-    "exit_reason": "SECURITY_VIOLATION"
+    "blocked_syscalls": 0,
+    "termination": "",
+    "blocked_syscall": "",
+    "exit_reason": "EXITED(0)"
   }
 }

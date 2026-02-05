@@ -321,8 +321,8 @@
         <div style="float: right; font-size: 0.9rem;">
             <a href="/" style="color: rgba(255,255,255,0.8); text-decoration: none; margin-right: 15px;">Dashboard</a>
             <a href="/evaluation"
-                style="color: white; text-decoration: none; font-weight: bold; border-bottom: 2px solid rgba(255,255,255,0.5);">Phase
-                6: Evaluation</a>
+                style="color: white; text-decoration: none; font-weight: bold; border-bottom: 2px solid rgba(255,255,255,0.5);">
+                : Evaluation</a>
         </div>
         <h1>📊 Sandbox Analytics & Intelligence</h1>
         <p>Deterministic behavioral analysis of persisted telemetry data from sandbox executions.</p>
@@ -624,6 +624,12 @@
         }
 
         function displayTimelineChart(result) {
+            // Validate result has data
+            if (!result || !result.timelines || result.timelines.length === 0) {
+                alert('No timeline data available for selected executions');
+                return;
+            }
+
             const ctx = document.getElementById('timelineChart').getContext('2d');
 
             if (timelineChart) {
@@ -632,17 +638,26 @@
 
             const datasets = result.timelines.map((timeline, idx) => ({
                 label: `${timeline.program} (${timeline.profile})`,
-                data: timeline.values,
+                data: timeline.values || [],
                 borderColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe'][idx % 4],
                 backgroundColor: `rgba(102, 126, 234, ${0.1 + idx * 0.1})`,
                 tension: 0.4,
                 fill: false
             }));
 
+            // Get time labels from first timeline that has data
+            let timeLabels = [];
+            for (const timeline of result.timelines) {
+                if (timeline.time_ms && timeline.time_ms.length > 0) {
+                    timeLabels = timeline.time_ms;
+                    break;
+                }
+            }
+
             timelineChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: result.timelines[0].time_ms || [],
+                    labels: timeLabels,
                     datasets: datasets
                 },
                 options: {

@@ -158,7 +158,7 @@
                 Analytics & Intelligence</a>
             <span style="color: #ccc;">|</span>
             <a href="/evaluation" style="text-decoration: none; color: #667eea; font-weight: bold; margin: 0 10px;">⚖️
-                Phase 6: Evaluation</a>
+                Evaluation</a>
         </div>
         <div class="refresh-indicator">🔄 Live (2s refresh)</div>
 
@@ -242,9 +242,9 @@
                 document.getElementById('avg-cpu').textContent = (stats.avg_cpu || 0) + '%';
                 document.getElementById('avg-mem').textContent = (stats.avg_mem || 0) + ' KB';
 
-                // Timeline charts (latest run)
+                // Timeline charts (latest run - take LAST element for most recent)
                 if (stats.runs && stats.runs.length > 0) {
-                    const latest = stats.runs[0];
+                    const latest = stats.runs[stats.runs.length - 1];
                     updateCPUTimeline(latest);
                     updateMemoryTimeline(latest);
                 }
