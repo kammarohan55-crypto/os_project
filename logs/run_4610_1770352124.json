@@ -1,0 +1,23 @@
+{
+  "pid": 4610,
+  "program": "./test_programs/moderate_work",
+  "profile": "LEARNING",
+  "timeline": {
+    "time_ms": [0,101,202,302,402,503],
+    "cpu_percent": [0,9,20,0,9,19],
+    "memory_kb": [3840,12924,12924,12924,12924,12924]
+  },
+  "summary": {
+    "runtime_ms": 603,
+    "peak_cpu": 20,
+    "peak_memory_kb": 12924,
+    "page_faults_minor": 2664,
+    "page_faults_major": 2,
+    "read_syscalls": 8,
+    "write_syscalls": 16,
+    "blocked_syscalls": 0,
+    "termination": "",
+    "blocked_syscall": "",
+    "exit_reason": "EXITED(0)"
+  }
+}

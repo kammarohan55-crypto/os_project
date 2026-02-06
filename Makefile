@@ -1,42 +1,27 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -O2
-LIBS = -lseccomp
+LIBS = -lseccomp -lm
 TARGET = runner/launcher
 SRC = runner/launcher.c runner/telemetry.c
 
 # Test programs
-TEST_DIR = test_programs
-TEST_PROGS = $(TEST_DIR)/normal_program \
-             $(TEST_DIR)/cpu_stress \
-             $(TEST_DIR)/memory_leak \
-             $(TEST_DIR)/policy_violation \
-             $(TEST_DIR)/syscall_flood \
-             $(TEST_DIR)/short_cpu_spike \
-             $(TEST_DIR)/gradual_memory_growth \
-             $(TEST_DIR)/file_reader \
-             $(TEST_DIR)/file_writer \
-             $(TEST_DIR)/controlled_fork
+TEST_PROGRAMS = test_programs/cpu_stress test_programs/memory_leak \
+                test_programs/policy_violation test_programs/syscall_flood \
+                test_programs/file_io_test test_programs/sleep_test \
+                test_programs/quick_exit test_programs/moderate_work
 
-.PHONY: all clean test_programs
-
-all: $(TARGET) test_programs
-	@echo "✅ Build complete"
-	@chmod +x $(TARGET)
-	@echo "✅ Launcher permissions set"
+all: $(TARGET) $(TEST_PROGRAMS)
 
 $(TARGET): $(SRC)
-	@echo "🔨 Building launcher..."
 	$(CC) $(CFLAGS) -o $(TARGET) $(SRC) $(LIBS)
 
-test_programs: $(TEST_PROGS)
-	@echo "✅ Test programs built"
-
-$(TEST_DIR)/%: $(TEST_DIR)/%.c
-	@echo "  Compiling $@..."
-	@$(CC) $(CFLAGS) $< -o $@ -lm
+# Compile test programs
+test_programs/%: test_programs/%.c
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 clean:
-	rm -f $(TARGET)
-	rm -f $(TEST_PROGS)
+	rm -f $(TARGET) $(TEST_PROGRAMS)
+	rm -f test_programs/normal_program test_programs/controlled_fork
+	rm -f samples/cpu_hog samples/syscall_flood samples/syscall_simple samples/fork_bomb
 	rm -f /tmp/sandbox_exec_*
-	@echo "✅ Clean complete"
+	@echo "Cleaned all compiled binaries"

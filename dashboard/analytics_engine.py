@@ -157,20 +157,47 @@ class BehavioralAnalyzer:
             'page_faults_major': page_faults_major
         }
         
-        # Heuristic Classification Rule (Rule 2)
-        # 1. Growth > 5000 KB
-        # 2. Samples >= 5 (to avoid short-lived noise)
+        # IMPROVED Heuristic Classification Rule
+        # A TRUE memory leak shows MONOTONIC (continuously increasing) growth
+        # NOT just a single large allocation!
+        #
+        # Detection criteria:
+        # 1. Growth > 5000 KB (significant memory increase)
+        # 2. Samples >= 5 (enough data points)
+        # 3. MONOTONIC PATTERN: At least 80% of samples show memory increase over previous
+        #
+        # This filters out:
+        # - Normal allocations (allocate → use → free) which plateau or drop
+        # - One-time large allocations (buffer allocation) which stay constant
+        
         if growth_kb > 5000 and samples >= 5:
-            return {
-                'behavior': 'MONOTONIC_MEMORY_GROWTH',
-                'explanation': (
-                    f"Memory grew by {growth_kb} KB over {samples} samples. "
-                    f"Ends at {metrics['ending_memory_kb']} KB. "
-                    f"This exceeds the 5000 KB threshold for leak detection. "
-                    f"Source: /proc/[pid]/status (VmPeak)."
-                ),
-                'metrics': metrics
-            }
+            # Check if memory is monotonically increasing (leak pattern)
+            increasing_count = 0
+            for i in range(1, len(mem_samples)):
+                if mem_samples[i] > mem_samples[i-1]:
+                    increasing_count += 1
+            
+            growth_rate = increasing_count / (len(mem_samples) - 1) if len(mem_samples) > 1 else 0
+            
+            # Require 80% of samples to show growth (true leak pattern)
+            if growth_rate >= 0.8:
+                return {
+                    'behavior': 'MONOTONIC_MEMORY_GROWTH',
+                    'explanation': (
+                        f"Memory leak detected: {growth_kb} KB growth over {samples} samples. "
+                        f"Monotonic growth rate: {growth_rate*100:.1f}% (threshold: 80%). "
+                        f"Pattern shows continuous allocation without freeing. "
+                        f"Source: /proc/[pid]/status (VmPeak)."
+                    ),
+                    'metrics': metrics
+                }
+            else:
+                # Large growth but NOT monotonic = normal allocation pattern
+                # Example: allocate 10MB → use it → free it (plateau, not continuous growth)
+                return {
+                    'behavior': None,  # Don't flag as leak!
+                    'metrics': metrics
+                }
             
         # Return metrics even if no behavior detected (for dashboard display)
         return {

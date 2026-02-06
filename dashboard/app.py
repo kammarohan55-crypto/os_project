@@ -1,8 +1,6 @@
 from flask import Flask, render_template, jsonify, request
 import pandas as pd
 import traceback
-import threading
-from pathlib import Path
 from ml_model import RiskClassifier
 from analytics import load_all_logs, extract_features, compute_statistics, get_syscall_frequency
 from analytics_engine import AnalyticsService
@@ -10,14 +8,10 @@ from risk_scoring import RiskScoringService
 
 app = Flask(__name__)
 
-# Global state (cached) - NOW THREAD-SAFE
+# Global state (cached)
 classifier = RiskClassifier()
-_cache_lock = threading.Lock()
-_feature_cache = {
-    'df': None,
-    'log_signatures': {}  # {filename: (mtime, size)}
-}
-
+cached_features = None
+last_log_count = 0
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -26,57 +20,29 @@ LOGS_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "logs"))
 analytics_service = AnalyticsService(LOGS_DIR)
 risk_scoring_service = RiskScoringService()  # Phase 5: Risk scoring
 
-def _get_cache_signature(log_dir):
-    """Generate cache signature from file modification times and sizes"""
-    sig = {}
-    log_path = Path(log_dir)
-    if not log_path.exists():
-        return sig
-    
-    for log_file in log_path.glob('*.json'):
-        try:
-            stat = log_file.stat()
-            sig[log_file.name] = (stat.st_mtime, stat.st_size)
-        except OSError:
-            continue
-    return sig
-
 def get_feature_dataframe():
     """
     CRITICAL: Single source of truth for all data
-    NOW WITH ROBUST CACHE INVALIDATION
     
     Returns: pandas DataFrame with extracted features
     """
-    global _feature_cache
+    global cached_features, last_log_count
     
     try:
-        # Generate current signature
-        current_sig = _get_cache_signature(LOGS_DIR)
+        logs = load_all_logs(LOGS_DIR)
         
-        # Thread-safe cache check
-        with _cache_lock:
-            # Cache hit: signatures match AND df exists
-            if (_feature_cache['log_signatures'] == current_sig and 
-                _feature_cache['df'] is not None):
-                return _feature_cache['df'].copy()  # Return copy for safety
-            
-            # Cache miss: rebuild
-            logs = load_all_logs(LOGS_DIR)
+        # Cache invalidation
+        if len(logs) != last_log_count:
             print(f"[Analytics] Extracting features from {len(logs)} logs...")
+            cached_features = extract_features(logs)
+            last_log_count = len(logs)
             
-            df = extract_features(logs)
-            
-            # Train ML when data changes
-            if len(df) > 0:
-                print(f"[ML] Training on {len(df)} samples...")
-                classifier.train(df)
-            
-            # Update cache
-            _feature_cache['df'] = df
-            _feature_cache['log_signatures'] = current_sig
-            
-            return df.copy()
+            # Train ML once when data changes
+            if len(cached_features) > 0:
+                print(f"[ML] Training on {len(cached_features)} samples...")
+                classifier.train(cached_features)
+        
+        return cached_features if cached_features is not None else pd.DataFrame()
     
     except Exception as e:
         print(f"[ERROR] Feature extraction failed: {e}")
@@ -620,12 +586,22 @@ def get_scenario_analytics(scenario_name):
         dominant_risk = max(risk_counts, key=risk_counts.get) if risk_counts else "UNKNOWN"
 
         # 3. Calculate Overhead (Section C)
-        # Compare STRICT vs LEARNING profiles within the matching set
+        # Compare STRICT vs LEARNING profiles - try specific scenario first, then fallback to all runs
         strict_apps = [l for l in matching_logs if l.get('profile') == 'STRICT']
         learning_apps = [l for l in matching_logs if l.get('profile') == 'LEARNING']
         
         overhead_pct = 0
         overhead_msg = "Not computed (Requires paired runs)"
+        
+        # If no paired runs in selected scenario, try ANY programs from all logs
+        if not (strict_apps and learning_apps):
+            # Fallback: Use any STRICT vs any LEARNING from entire dataset
+            all_strict = [l for l in all_logs if l.get('profile') == 'STRICT']
+            all_learning = [l for l in all_logs if l.get('profile') == 'LEARNING']
+            
+            if all_strict and all_learning:
+                strict_apps = all_strict
+                learning_apps = all_learning
         
         if strict_apps and learning_apps:
             avg_strict = sum([l.get('summary', {}).get('runtime_ms', 0) for l in strict_apps]) / len(strict_apps)
@@ -633,7 +609,12 @@ def get_scenario_analytics(scenario_name):
             
             if avg_learning > 0:
                 overhead_pct = ((avg_strict - avg_learning) / avg_learning) * 100
-                overhead_msg = f"{overhead_pct:.1f}% (STRICT vs LEARNING)"
+                
+                # Provide context about what was compared
+                if len(strict_apps) == len(learning_apps) and strict_apps[0].get('program') == learning_apps[0].get('program'):
+                    overhead_msg = f"{overhead_pct:.1f}% (Same Program: {len(strict_apps)} runs)"
+                else:
+                    overhead_msg = f"{overhead_pct:.1f}% (STRICT: {len(strict_apps)} runs vs LEARNING: {len(learning_apps)} runs)"
             else:
                 overhead_msg = "Invalid Baseline (0ms)"
         

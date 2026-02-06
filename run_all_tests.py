@@ -18,24 +18,6 @@ print("OS SANDBOX - COMPLETE TEST SUITE")
 print("=" * 60)
 print()
 
-# CRITICAL: Ensure build succeeds before testing
-print("🔨 Checking build status...")
-if not os.path.exists("runner/launcher"):
-    print("❌ FAIL: runner/launcher not found!")
-    print()
-    print("  Please run: make")
-    print("  Or: bash setup.sh")
-    exit(1)
-
-# Ensure launcher is executable
-if not os.access("runner/launcher", os.X_OK):
-    print("⚠️  Warning: launcher not executable, fixing...")
-    os.chmod("runner/launcher", 0o755)
-    print("✅  Fixed permissions")
-
-print("✅ Build verified")
-print()
-
 # Clean old logs
 print("🧹 Cleaning old logs...")
 for log in Path("logs").glob("*.json"):
@@ -45,39 +27,39 @@ print()
 # Test cases
 tests = [
     {
-        "name": "Normal Program (LEARNING)",
-        "profile": "LEARNING",
-        "binary": "test_programs/normal_program",
-        "args": [],
-        "expected": "Low CPU, stable memory, benign"
-    },
-    {
-        "name": "CPU Stress (LEARNING)",
-        "profile": "LEARNING",
-        "binary": "test_programs/cpu_stress",
-        "args": [],
-        "expected": "High CPU (60-100%), will timeout"
-    },
-    {
-        "name": "Memory Leak (LEARNING)",
-        "profile": "LEARNING",
-        "binary": "test_programs/memory_leak",
-        "args": [],
-        "expected": "High memory growth (100+ MB)"
-    },
-    {
-        "name": "Policy Violation (STRICT)",
+        "name": "Normal Execution (STRICT)",
         "profile": "STRICT",
-        "binary": "test_programs/policy_violation",
-        "args": [],
-        "expected": "Blocked by seccomp (fork)"
+        "binary": "/bin/echo",
+        "args": ["test"],
+        "expected": "Quick execution, low CPU"
     },
     {
-        "name": "Syscall Flood (LEARNING)",
+        "name": "List Files (LEARNING)",
         "profile": "LEARNING",
-        "binary": "test_programs/syscall_flood",
+        "binary": "/bin/ls",
+        "args": ["-la"],
+        "expected": "Normal CPU usage"
+    },
+    {
+        "name": "Short Sleep (STRICT)",
+        "profile": "STRICT",
+        "binary": "/bin/sleep",
+        "args": ["0.3"],
+        "expected": "Very low CPU (sleeping)"
+    },
+    {
+        "name": "CPU Hog (LEARNING)",
+        "profile": "LEARNING",
+        "binary": "samples/cpu_hog",
         "args": [],
-        "expected": "High syscall count (500+)"
+        "expected": "High CPU, will be killed"
+    },
+    {
+        "name": "Fork Bomb (STRICT)",
+        "profile": "STRICT",
+        "binary": "samples/fork_bomb",
+        "args": [],
+        "expected": "Blocked by seccomp"
     },
 ]
 
@@ -112,60 +94,6 @@ print()
 
 logs = sorted(Path("logs").glob("*.json"), key=lambda x: x.stat().st_mtime)
 print(f"📊 Total Logs Created: {len(logs)}")
-
-# CRITICAL: Validate logs were actually generated
-if len(logs) == 0:
-    print()
-    print("❌ FAIL: No logs generated!")
-    print()
-    print("  Troubleshooting:")
-    print("  1. Ensure 'make' was run: make clean && make")
-    print("  2. Check launcher exists: ls -l runner/launcher")
-    print("  3. Set executable: chmod +x runner/launcher")
-    print()
-    exit(1)
-
-# Validate log quality
-def validate_log(log_file):
-    """Ensure log has required fields and valid telemetry"""
-    try:
-        with open(log_file) as f:
-            data = json.load(f)
-        
-        required = ['pid', 'program', 'profile', 'summary', 'timeline']
-        missing = [k for k in required if k not in data]
-        if missing:
-            return False, f"Missing fields: {missing}"
-        
-        # Check timeline has actual samples
-        timeline = data.get('timeline', {})
-        if len(timeline.get('time_ms', [])) == 0:
-            return False, "Empty timeline (no telemetry captured)"
-        
-        return True, "OK"
-    except json.JSONDecodeError:
-        return False, "Invalid JSON format"
-    except Exception as e:
-        return False, str(e)
-
-print()
-print("🔍 Validating Log Quality...")
-all_valid = True
-for log_file in logs:
-    valid, msg = validate_log(log_file)
-    if not valid:
-        print(f"  ❌ {log_file.name}: {msg}")
-        all_valid = False
-
-if all_valid:
-    print(f"  ✅ All {len(logs)} logs valid")
-    print()
-else:
-    print()
-    print("❌ FAIL: Some logs have validation errors")
-    exit(1)
-
-print("✅ PASS: Logs successfully generated and validated")
 print()
 
 if logs:

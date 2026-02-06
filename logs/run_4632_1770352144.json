@@ -1,20 +1,20 @@
 {
-  "pid": 5222,
-  "program": "test_programs/cpu_stress",
+  "pid": 4632,
+  "program": "./test_programs/cpu_stress",
   "profile": "LEARNING",
   "timeline": {
-    "time_ms": [4,105,205,306,406,507,607,708,808,908,1008,1109,1209,1310,1410,1511,1611,1712,1812,1913,2013,2113],
-    "cpu_percent": [0,80,100,98,100,100,100,103,102,105,100,100,98,108,100,100,100,98,100,100,100,100],
+    "time_ms": [1,102,202,303,403,503,604,704,804,905,1005,1105,1206,1306,1406,1507,1607,1707,1808,1908,2008,2109],
+    "cpu_percent": [0,81,100,100,100,101,98,100,100,101,100,100,98,100,100,100,100,103,108,96,100,100],
     "memory_kb": [3840,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612,3612]
   },
   "summary": {
-    "runtime_ms": 2214,
+    "runtime_ms": 2209,
     "peak_cpu": 108,
     "peak_memory_kb": 3840,
-    "page_faults_minor": 111,
+    "page_faults_minor": 113,
     "page_faults_major": 2,
     "read_syscalls": 9,
-    "write_syscalls": 1,
+    "write_syscalls": 7,
     "blocked_syscalls": 0,
     "termination": "SIG64",
     "blocked_syscall": "",
